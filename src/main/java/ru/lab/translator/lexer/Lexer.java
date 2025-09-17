@@ -54,7 +54,11 @@ public class Lexer {
 
     private Token readIdentifierOrKeyword() {
         int start = pos;
-        while (pos < input.length() && (Character.isLetterOrDigit(peek()))) {
+        char first = peek();
+        if (!Character.isLetter(first)) {
+            throw new RuntimeException("Идентификатор не может начинаться с цифры: " + first + " на позиции " + pos);
+        }
+        while (pos < input.length() && Character.isLetterOrDigit(peek())) {
             advance();
         }
         String word = input.substring(start, pos);
@@ -62,14 +66,21 @@ public class Lexer {
         return new Token(type, word, start);
     }
 
+
     private Token readNumber() {
         int start = pos;
         while (pos < input.length() && Character.isDigit(peek())) {
             advance();
         }
+        if (pos < input.length() && Character.isLetter(peek())) {
+            throw new RuntimeException(
+                    "Некорректное число: цифры не могут быть перед буквами на позиции " + start
+            );
+        }
         String number = input.substring(start, pos);
         return new Token(TokenType.NUMBER, number, start);
     }
+
 
     private Token readSymbol() {
         int start = pos;

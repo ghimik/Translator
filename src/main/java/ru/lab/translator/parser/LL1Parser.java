@@ -1,7 +1,9 @@
 package ru.lab.translator.parser;
 
+import ru.lab.translator.ast.*;
 import ru.lab.translator.lexer.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +19,7 @@ public class LL1Parser {
     public LL1Parser(List<Token> tokens) {
         this.tokens = tokens;
     }
+
 
     private Token peek() {
         if (pos < tokens.size()) return tokens.get(pos);
@@ -37,26 +40,22 @@ public class LL1Parser {
         advance();
     }
 
-    // ------------------------------------------------
-    // Declarations, Identifiers, Expressions, etc
-    // ------------------------------------------------
 
     // <Объявления> ::= <Объявление> | <Объявление> <Объявления>
-    public void parseDeclarations() {
-        if (peek().getType() != TokenType.INTEGER && peek().getType() != TokenType.BOOLEAN) {
-            throw new RuntimeException(
-                    "Syntax error: ожидался тип Integer или Boolean, но найден " + peek().getValue() + " на позиции " + peek().getPosition()
-            );
-        }
-
+    private DeclarationsNode parseDeclarations() {
+        List<DeclarationNode> declList = new ArrayList<>();
         while (peek().getType() == TokenType.INTEGER || peek().getType() == TokenType.BOOLEAN) {
-            parseDeclaration();
+            declList.addAll(parseDeclaration());
         }
+        return new DeclarationsNode(declList);
     }
 
-    private void parseDeclaration() {
+    private List<DeclarationNode> parseDeclaration() {
+        Token typeToken = peek();
         parseType();
-        parseIdentifierList(true); // true = добавляем переменные в таблицу
+        String type = typeToken.getValue();
+        List<String> identifiers = parseIdentifierList(true);
+        return identifiers.stream().map(id -> new DeclarationNode(id, type)).toList();
     }
 
     private void parseType() {
@@ -70,77 +69,103 @@ public class LL1Parser {
         }
     }
 
-    private void parseIdentifierList(boolean isDeclaration) {
-        parseIdentifier(isDeclaration);
+
+    private List<String> parseIdentifierList(boolean isDeclaration) {
+        List<String> ids = new ArrayList<>();
+        ids.add(parseIdentifier(isDeclaration));
         while (peek().getType() == TokenType.COMMA) {
             advance();
-            parseIdentifier(isDeclaration);
+            ids.add(parseIdentifier(isDeclaration));
         }
+        return ids;
     }
 
-    private void parseIdentifier() {
-        parseIdentifier(false);
-    }
-
-    private void parseIdentifier(boolean isDeclaration) {
+    private String parseIdentifier(boolean isDeclaration) {
         Token t = peek();
         if (t.getType() == TokenType.ID) {
             String name = t.getValue();
             if (isDeclaration) {
                 if (!declaredVariables.add(name)) {
-                    throw new RuntimeException("Semantic error: переменная '" + name + "' уже объявлена (позиция " + t.getPosition() + ")");
+                    throw new RuntimeException("Semantic error: переменная '" + name + "' уже объявлена");
                 }
             } else {
                 if (!declaredVariables.contains(name)) {
-                    throw new RuntimeException("Semantic error: переменная '" + name + "' не объявлена (позиция " + t.getPosition() + ")");
+                    throw new RuntimeException("Semantic error: переменная '" + name + "' не объявлена");
                 }
             }
             advance();
+            return name;
         } else {
-            throw new RuntimeException(
-                    "Syntax error: ожидался идентификатор, но найден " + t.getValue() + " на позиции " + t.getPosition()
-            );
+            throw new RuntimeException("Ожидался идентификатор");
         }
     }
+
+
 
     // <Выражение> ::= <АрифВыр> | <ЛогВыр>
-    private void parseExpression() {
-        // смотрим токен: число, идентификатор, true/false, NOT, скобка
+    private ExpressionNode parseExpression() {
         Token t = peek();
         if (t.getType() == TokenType.NUMBER || t.getType() == TokenType.ID || t.getType() == TokenType.LPAREN) {
-            parseArithmeticExpression();
-        } else if (t.getType() == TokenType.TRUE || t.getType() == TokenType.FALSE
-                || t.getType() == TokenType.NOT) {
-            parseLogicalExpression();
+            return parseArithmeticExpression();
+        } else if (t.getType() == TokenType.TRUE || t.getType() == TokenType.FALSE || t.getType() == TokenType.NOT) {
+            return parseLogicalExpression();
         } else {
-            throw new RuntimeException("Syntax error: недопустимое начало выражения " +
-                    t.getValue() + " на позиции " + t.getPosition());
+            throw new RuntimeException("Invalid expression start: " + t.getValue());
         }
     }
+
+
+    private ConstNode parseConst() {
+        int val = Integer.parseInt(peek().getValue());
+        advance();
+        return new ConstNode(val);
+    }
+
+    private VarNode parseVar() {
+        String name = parseIdentifier(false);
+        return new VarNode(name);
+    }
+
 
     // <АрифВыр> ::= <Термин> | <Термин> <БинОп> <АрифВыр>
-    private void parseArithmeticExpression() {
-        parseTerm();
-        while (peek().getType() == TokenType.PLUS
-                || peek().getType() == TokenType.MINUS
-                || peek().getType() == TokenType.MUL
-                || peek().getType() == TokenType.DIV) {
-            advance(); // оператор
-            parseTerm();
-        }
+    private ExpressionNode parseArithmeticExpression() {
+        return parseAddSub();
     }
 
+    private ExpressionNode parseAddSub() {
+        ExpressionNode left = parseMulDiv();
+        while (peek().getType() == TokenType.PLUS || peek().getType() == TokenType.MINUS) {
+            String op = advance().getValue();
+            ExpressionNode right = parseMulDiv();
+            left = new BinaryExpressionNode(op, left, right);
+        }
+        return left;
+    }
+
+    private ExpressionNode parseMulDiv() {
+        ExpressionNode left = parseTerm();
+        while (peek().getType() == TokenType.MUL || peek().getType() == TokenType.DIV) {
+            String op = advance().getValue();
+            ExpressionNode right = parseTerm();
+            left = new BinaryExpressionNode(op, left, right);
+        }
+        return left;
+    }
+
+
     // <Термин> ::= <Идент> | <Const> | ( <АрифВыр> )
-    private void parseTerm() {
+
+    private ExpressionNode parseTerm() {
         Token t = peek();
         if (t.getType() == TokenType.ID) {
-            parseIdentifier(); // тут проверка на объявление
+            return parseVar();
         } else if (t.getType() == TokenType.NUMBER) {
-            advance();
+            return parseConst();
         } else if (t.getType() == TokenType.LPAREN) {
             advance();
-            parseArithmeticExpression();
+            ExpressionNode expr = parseArithmeticExpression();
             expect(TokenType.RPAREN);
+            return expr;
         } else {
             throw new RuntimeException("Syntax error: ожидался идентификатор, число или (expr), но найден " +
                     t.getValue() + " на позиции " + t.getPosition());
@@ -149,27 +174,36 @@ public class LL1Parser {
 
 
     // <ЛогВыр>
-    private void parseLogicalExpression() {
-        parseLogicalTerm();
+    private ExpressionNode parseLogicalExpression() {
+        ExpressionNode left = parseLogicalTerm();
         while (peek().getType() == TokenType.AND || peek().getType() == TokenType.OR) {
-            advance(); // AND/OR
-            parseLogicalTerm();
+            String op = advance().getValue(); // AND/OR
+            ExpressionNode right = parseLogicalTerm();
+            left = new LogicalExpressionNode(left, op, right);
         }
+        return left;
     }
 
-    private void parseLogicalTerm() {
+    private ExpressionNode parseLogicalTerm() {
         Token t = peek();
-        if (t.getType() == TokenType.TRUE || t.getType() == TokenType.FALSE) {
+        if (t.getType() == TokenType.TRUE) {
             advance();
+            return new ConstNode(1);
+        } else if (t.getType() == TokenType.FALSE) {
+            advance();
+            return new ConstNode(0);
         } else if (t.getType() == TokenType.NOT) {
             advance();
-            parseLogicalTerm();
+            ExpressionNode term = parseLogicalTerm();
+            return new LogicalExpressionNode(term, "NOT", null); // для NOT можно обрабатывать null
         } else if (t.getType() == TokenType.ID || t.getType() == TokenType.NUMBER || t.getType() == TokenType.LPAREN) {
-            parseArithmeticExpression();
+            ExpressionNode left = parseArithmeticExpression();
             if (isRelOp(peek().getType())) {
-                advance();
-                parseArithmeticExpression();
+                String op = advance().getValue();
+                ExpressionNode right = parseArithmeticExpression();
+                return new LogicalExpressionNode(left, op, right);
             }
+            return left;
         } else {
             throw new RuntimeException("Syntax error: некорректное логическое выражение на позиции " + t.getPosition());
         }
@@ -181,115 +215,121 @@ public class LL1Parser {
                 type == TokenType.EQ || type == TokenType.NEQ;
     }
 
-    // ------------------------------------------------
-    // Новые методы: итоговый парсер, блок вычислений, операторы, Print
-    // ------------------------------------------------
-
-    public void parseProgram() {
-        parseDeclarations();
-        parseComputationDescription();
-        parsePrintStatement(); // Print <Идент>
-        // ожидание конца входа
-        if (peek().getType() != TokenType.EOF) {
-            Token t = peek();
-            throw new RuntimeException("Syntax error: ожидался конец программы, но найден " + t.getValue() + " на позиции " + t.getPosition());
-        }
+    public ProgramNode parseProgram() {
+        DeclarationsNode decls = parseDeclarations();
+        StatementsNode stmts = parseComputationDescription();
+        PrintNode printNode = parsePrintStatement();
+        expect(TokenType.EOF);
+        return new ProgramNode(decls, stmts, printNode);
     }
+
 
     // <Описание вычислений> ::= Begin <СписокОператоров> End
-    private void parseComputationDescription() {
+    private StatementsNode parseComputationDescription() {
         expect(TokenType.BEGIN);
-        parseStatementList();
+        StatementsNode stmts = parseStatementList();
         expect(TokenType.END);
+        return stmts;
     }
+
 
     // <СписокОператоров> ::= <Оператор> | <Оператор> <СписокОператоров>
-    private void parseStatementList() {
+    private StatementsNode parseStatementList() {
+        List<StatementNode> list = new ArrayList<>();
         while (isStatementStart(peek().getType())) {
-            parseStatement();
+            list.add(parseStatement());
         }
+        return new StatementsNode(list);
     }
 
+
     private boolean isStatementStart(TokenType t) {
-        return t == TokenType.ID || t == TokenType.IF || t == TokenType.WHILE || t == TokenType.CASE;
+        return t == TokenType.ID || t == TokenType.IF || t == TokenType.WHILE || t == TokenType.CASE || t == TokenType.PRINT;
     }
 
     // <Оператор> ::= <Присваивание> | <Case> | <If> | <While>
-    private void parseStatement() {
-        Token t = peek();
-        switch (t.getType()) {
-            case ID:
-                parseAssignment();
-                break;
-            case IF:
-                parseIf();
-                break;
-            case WHILE:
-                parseWhile();
-                break;
-            case CASE:
-                parseCase();
-                break;
-            default:
-                throw new RuntimeException("Syntax error: неожиданный оператор " + t.getValue() + " на позиции " + t.getPosition());
+
+    private StatementNode parseStatement() {
+        switch (peek().getType()) {
+            case ID -> { return parseAssignment(); }
+            case IF -> { return parseIf(); }
+            case WHILE -> { return parseWhile(); }
+            case CASE -> { return parseCase(); }
+            case PRINT -> {
+                PrintNode printNode = parsePrintStatement();
+                expect(TokenType.SEMICOLON);
+                return printNode;
+            }
+            default -> throw new RuntimeException("Unexpected token " + peek().getValue());
         }
     }
 
     // <Присваивание> ::= <Идент> := <Выражение> ;
-    private void parseAssignment() {
-        parseIdentifier();
-        // предполагаем токен ASSIGN для ':='
+    private AssignmentNode parseAssignment() {
+        String varName = parseIdentifier(false);
         expect(TokenType.ASSIGN);
-        parseExpression();
+        ExpressionNode expr = parseExpression();
         expect(TokenType.SEMICOLON);
+        return new AssignmentNode(varName, expr);
     }
 
+
     // <If> ::= IF <ЛогВыр> THEN <СписокОператоров> ELSE <СписокОператоров> ENDIF
-    private void parseIf() {
+    private IfNode parseIf() {
         expect(TokenType.IF);
-        parseLogicalExpression();
+        ExpressionNode cond = parseLogicalExpression();
         expect(TokenType.THEN);
-        parseStatementList();
+        StatementsNode thenBranch = parseStatementList();
         expect(TokenType.ELSE);
-        parseStatementList();
+        StatementsNode elseBranch = parseStatementList();
         expect(TokenType.ENDIF);
+        return new IfNode(cond, thenBranch, elseBranch);
     }
 
     // <While> ::= WHILE <ЛогВыр> DO <СписокОператоров> ENDWHILE
-    private void parseWhile() {
+    private WhileNode parseWhile() {
         expect(TokenType.WHILE);
-        parseLogicalExpression();
+        ExpressionNode cond = parseLogicalExpression();
         expect(TokenType.DO);
-        parseStatementList();
+        StatementsNode body = parseStatementList();
         expect(TokenType.ENDWHILE);
+        return new WhileNode(cond, body);
     }
 
     // <Case> ::= CASE <Идент> OF <Ветви> ENDCASE
-    private void parseCase() {
+    private CaseNode parseCase() {
         expect(TokenType.CASE);
-        parseIdentifier();
+        String varName = parseIdentifier(false);
         expect(TokenType.OF);
-        parseBranchList();
+        List<CaseBranchNode> branches = parseBranchList();
         expect(TokenType.ENDCASE);
+        return new CaseNode(varName, branches);
     }
 
     // <Ветви> ::= <Ветвь> | <Ветвь> <Ветви>
     // <Ветвь> ::= <Const> : <СписокОператоров>
-    private void parseBranchList() {
+    private List<CaseBranchNode> parseBranchList() {
+        List<CaseBranchNode> list = new ArrayList<>();
         while (peek().getType() == TokenType.NUMBER) {
-            parseBranch();
+            list.add(parseBranch());
         }
+        return list;
     }
 
-    private void parseBranch() {
-        expect(TokenType.NUMBER);
+
+    private CaseBranchNode parseBranch() {
+        int val = Integer.parseInt(peek().getValue());
+        advance();
         expect(TokenType.COLON);
-        parseStatementList();
+        StatementsNode body = parseStatementList();
+        return new CaseBranchNode(val, body);
     }
 
     // <Оператор печати> ::= Print <Идент>
-    public void parsePrintStatement() {
+    private PrintNode parsePrintStatement() {
         expect(TokenType.PRINT);
-        parseIdentifier();
+        String varName = parseIdentifier(false);
+        return new PrintNode(varName);
     }
+
 }
