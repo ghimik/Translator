@@ -11,15 +11,15 @@ public class WhileNode extends StatementNode {
 
     @Override
     public String generateAssembly() {
-        String startLabel = "WHILE_START_" + hashCode();
-        String endLabel = "WHILE_END_" + hashCode();
-        return startLabel + ":\n" +
+        String start = "WHILE_START_" + hashCode();
+        String end = "WHILE_END_" + hashCode();
+        return start + ":\n" +
                 condition.generateAssembly() +
-                "    cmp eax, 0\n" +
-                "    je " + endLabel + "\n" +
+                "    cmp rax, 0\n" +
+                "    je " + end + "\n" +
                 body.generateAssembly() +
-                "    jmp " + startLabel + "\n" +
-                endLabel + ":\n";
+                "    jmp " + start + "\n" +
+                end + ":\n";
     }
 
     @Override

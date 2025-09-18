@@ -8,7 +8,7 @@ public class ConstNode extends ExpressionNode {
 
     @Override
     public String generateAssembly() {
-        return "    mov eax, " + value + "\n"; // результат в eax
+        return "    mov rax, " + value + "\n";
     }
 
     @Override

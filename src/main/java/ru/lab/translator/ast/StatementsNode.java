@@ -14,9 +14,7 @@ public class StatementsNode extends ASTNode {
     @Override
     public String generateAssembly() {
         StringBuilder sb = new StringBuilder();
-        for (StatementNode s : statements) {
-            sb.append(s.generateAssembly());
-        }
+        for (StatementNode s : statements) sb.append(s.generateAssembly());
         return sb.toString();
     }
 

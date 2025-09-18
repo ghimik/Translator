@@ -14,13 +14,14 @@ public class ProgramNode extends ASTNode {
     @Override
     public String generateAssembly() {
         StringBuilder sb = new StringBuilder();
-        sb.append("global main\nextern printf\n\nsection .data\n");
-        sb.append("fmt: db \"Result: %d\",10,0\n"); // формат для printf
+        sb.append("global _start\nsection .data\n");
+        sb.append("buffer times 21 db 0\n");
+        sb.append("newline db 10\n");
         sb.append(declarations.generateAssembly());
-        sb.append("\nsection .text\nmain:\n");
+        sb.append("\nsection .text\n_start:\n");
         sb.append(statements.generateAssembly());
         sb.append(printNode.generateAssembly());
-        sb.append("    ret\n");
+        sb.append("    mov rax, 60\n    xor rdi, rdi\n    syscall\n");
         return sb.toString();
     }
 

@@ -7,7 +7,7 @@ public class VarNode extends ExpressionNode {
     }
     @Override
     public String generateAssembly() {
-        return "    mov eax, [" + name + "]\n";
+        return "    mov rax, [" + name + "]\n";
     }
     @Override
     public String toString() {

@@ -9,10 +9,30 @@ public class PrintNode extends StatementNode {
 
     @Override
     public String generateAssembly() {
-        return "    mov rsi, [" + var + "]\n" +
-                "    lea rdi, [rel fmt]\n" +
-                "    xor eax, eax\n" +
-                "    call printf\n";
+        String loopLabel = "PRINT_CONVERT_" + hashCode();
+        return
+                "    mov rax, [" + var + "]\n" +
+                        "    mov rbx, 10\n" +
+                        "    lea rsi, [rel buffer+20]\n" +
+                        "    mov rcx, 0\n" +
+                        loopLabel + ":\n" +
+                        "    xor rdx, rdx\n" +
+                        "    div rbx\n" +
+                        "    add dl, '0'\n" +
+                        "    dec rsi\n" +
+                        "    mov [rsi], dl\n" +
+                        "    inc rcx\n" +
+                        "    test rax, rax\n" +
+                        "    jnz " + loopLabel + "\n" +
+                        "    mov rax, 1\n" +
+                        "    mov rdi, 1\n" +
+                        "    mov rdx, rcx\n" +
+                        "    syscall\n" +
+                        "    mov rax, 1\n" +
+                        "    mov rdi, 1\n" +
+                        "    mov rsi, newline\n" +
+                        "    mov rdx, 1\n" +
+                        "    syscall\n";
     }
 
     @Override

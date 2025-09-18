@@ -16,7 +16,7 @@ public class IfNode extends StatementNode {
         String elseLabel = "ELSE_" + hashCode();
         String endLabel = "ENDIF_" + hashCode();
         return condition.generateAssembly() +
-                "    cmp eax, 0\n" +
+                "    cmp rax, 0\n" +
                 "    je " + elseLabel + "\n" +
                 thenBranch.generateAssembly() +
                 "    jmp " + endLabel + "\n" +

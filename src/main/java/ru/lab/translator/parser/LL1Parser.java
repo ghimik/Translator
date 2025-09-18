@@ -103,16 +103,99 @@ public class LL1Parser {
 
 
     // <Выражение> ::= <АрифВыр> | <ЛогВыр>
+    // Главный метод для любого выражения
     private ExpressionNode parseExpression() {
-        Token t = peek();
-        if (t.getType() == TokenType.NUMBER || t.getType() == TokenType.ID || t.getType() == TokenType.LPAREN) {
-            return parseArithmeticExpression();
-        } else if (t.getType() == TokenType.TRUE || t.getType() == TokenType.FALSE || t.getType() == TokenType.NOT) {
-            return parseLogicalExpression();
-        } else {
-            throw new RuntimeException("Invalid expression start: " + t.getValue());
-        }
+        return parseOr();
     }
+
+    // OR имеет самый низкий приоритет
+    private ExpressionNode parseOr() {
+        ExpressionNode left = parseAnd();
+        while (peek().getType() == TokenType.OR) {
+            String op = advance().getValue();
+            ExpressionNode right = parseAnd();
+            left = new LogicalExpressionNode(left, op, right);
+        }
+        return left;
+    }
+
+    // AND чуть выше по приоритету
+    private ExpressionNode parseAnd() {
+        ExpressionNode left = parseNot();
+        while (peek().getType() == TokenType.AND) {
+            String op = advance().getValue();
+            ExpressionNode right = parseNot();
+            left = new LogicalExpressionNode(left, op, right);
+        }
+        return left;
+    }
+
+    // NOT — унарный оператор
+    private ExpressionNode parseNot() {
+        if (peek().getType() == TokenType.NOT) {
+            advance();
+            ExpressionNode expr = parseNot();
+            return new LogicalExpressionNode(expr, "NOT", null);
+        }
+        return parseComparison();
+    }
+
+    // Сравнения (<, >, <=, >=, ==, !=)
+    private ExpressionNode parseComparison() {
+        ExpressionNode left = parseArithmeticExpression();
+        if (isRelOp(peek().getType())) {
+            String op = advance().getValue();
+            ExpressionNode right = parseArithmeticExpression();
+            left = new LogicalExpressionNode(left, op, right);
+        }
+        return left;
+    }
+
+    // Арифметика ( + - )
+    private ExpressionNode parseArithmeticExpression() {
+        ExpressionNode left = parseMulDiv();
+        while (peek().getType() == TokenType.PLUS || peek().getType() == TokenType.MINUS) {
+            String op = advance().getValue();
+            ExpressionNode right = parseMulDiv();
+            left = new BinaryExpressionNode(op, left, right);
+        }
+        return left;
+    }
+
+    // Арифметика ( * / )
+    private ExpressionNode parseMulDiv() {
+        ExpressionNode left = parseTerm();
+        while (peek().getType() == TokenType.MUL || peek().getType() == TokenType.DIV) {
+            String op = advance().getValue();
+            ExpressionNode right = parseTerm();
+            left = new BinaryExpressionNode(op, left, right);
+        }
+        return left;
+    }
+
+    // Термин: число, переменная или скобки
+    private ExpressionNode parseTerm() {
+        Token t = peek();
+        if (t.getType() == TokenType.NUMBER) return parseConst();
+        if (t.getType() == TokenType.ID) return parseVar();
+        if (t.getType() == TokenType.LPAREN) {
+            advance();
+            ExpressionNode expr = parseExpression();
+            expect(TokenType.RPAREN);
+            return expr;
+        }
+        if (t.getType() == TokenType.TRUE) { advance(); return new ConstNode(1); }
+        if (t.getType() == TokenType.FALSE) { advance(); return new ConstNode(0); }
+
+        throw new RuntimeException("Syntax error: неожиданный токен " + t.getValue() + " на позиции " + t.getPosition());
+    }
+
+    private boolean isRelOp(TokenType type) {
+        return type == TokenType.LT || type == TokenType.GT ||
+                type == TokenType.LE || type == TokenType.GE ||
+                type == TokenType.EQ || type == TokenType.NEQ;
+    }
+
 
 
     private ConstNode parseConst() {
@@ -127,50 +210,6 @@ public class LL1Parser {
     }
 
 
-    // <АрифВыр> ::= <Термин> | <Термин> <БинОп> <АрифВыр>
-    private ExpressionNode parseArithmeticExpression() {
-        return parseAddSub();
-    }
-
-    private ExpressionNode parseAddSub() {
-        ExpressionNode left = parseMulDiv();
-        while (peek().getType() == TokenType.PLUS || peek().getType() == TokenType.MINUS) {
-            String op = advance().getValue();
-            ExpressionNode right = parseMulDiv();
-            left = new BinaryExpressionNode(op, left, right);
-        }
-        return left;
-    }
-
-    private ExpressionNode parseMulDiv() {
-        ExpressionNode left = parseTerm();
-        while (peek().getType() == TokenType.MUL || peek().getType() == TokenType.DIV) {
-            String op = advance().getValue();
-            ExpressionNode right = parseTerm();
-            left = new BinaryExpressionNode(op, left, right);
-        }
-        return left;
-    }
-
-
-    // <Термин> ::= <Идент> | <Const> | ( <АрифВыр> )
-
-    private ExpressionNode parseTerm() {
-        Token t = peek();
-        if (t.getType() == TokenType.ID) {
-            return parseVar();
-        } else if (t.getType() == TokenType.NUMBER) {
-            return parseConst();
-        } else if (t.getType() == TokenType.LPAREN) {
-            advance();
-            ExpressionNode expr = parseArithmeticExpression();
-            expect(TokenType.RPAREN);
-            return expr;
-        } else {
-            throw new RuntimeException("Syntax error: ожидался идентификатор, число или (expr), но найден " +
-                    t.getValue() + " на позиции " + t.getPosition());
-        }
-    }
 
 
     // <ЛогВыр>
@@ -209,11 +248,6 @@ public class LL1Parser {
         }
     }
 
-    private boolean isRelOp(TokenType type) {
-        return type == TokenType.LT || type == TokenType.GT ||
-                type == TokenType.LE || type == TokenType.GE ||
-                type == TokenType.EQ || type == TokenType.NEQ;
-    }
 
     public ProgramNode parseProgram() {
         DeclarationsNode decls = parseDeclarations();
