@@ -2,7 +2,6 @@ package ru.lab.translator.ast;
 
 import java.util.List;
 
-// Объявления
 public class DeclarationsNode extends ASTNode {
     List<DeclarationNode> declarations;
 

@@ -103,12 +103,10 @@ public class LL1Parser {
 
 
     // <Выражение> ::= <АрифВыр> | <ЛогВыр>
-    // Главный метод для любого выражения
     private ExpressionNode parseExpression() {
         return parseOr();
     }
 
-    // OR имеет самый низкий приоритет
     private ExpressionNode parseOr() {
         ExpressionNode left = parseAnd();
         while (peek().getType() == TokenType.OR) {
@@ -119,7 +117,6 @@ public class LL1Parser {
         return left;
     }
 
-    // AND чуть выше по приоритету
     private ExpressionNode parseAnd() {
         ExpressionNode left = parseNot();
         while (peek().getType() == TokenType.AND) {
@@ -130,7 +127,6 @@ public class LL1Parser {
         return left;
     }
 
-    // NOT — унарный оператор
     private ExpressionNode parseNot() {
         if (peek().getType() == TokenType.NOT) {
             advance();
@@ -140,7 +136,6 @@ public class LL1Parser {
         return parseComparison();
     }
 
-    // Сравнения (<, >, <=, >=, ==, !=)
     private ExpressionNode parseComparison() {
         ExpressionNode left = parseArithmeticExpression();
         if (isRelOp(peek().getType())) {
@@ -151,7 +146,6 @@ public class LL1Parser {
         return left;
     }
 
-    // Арифметика ( + - )
     private ExpressionNode parseArithmeticExpression() {
         ExpressionNode left = parseMulDiv();
         while (peek().getType() == TokenType.PLUS || peek().getType() == TokenType.MINUS) {
@@ -162,7 +156,6 @@ public class LL1Parser {
         return left;
     }
 
-    // Арифметика ( * / )
     private ExpressionNode parseMulDiv() {
         ExpressionNode left = parseTerm();
         while (peek().getType() == TokenType.MUL || peek().getType() == TokenType.DIV) {
@@ -173,7 +166,6 @@ public class LL1Parser {
         return left;
     }
 
-    // Термин: число, переменная или скобки
     private ExpressionNode parseTerm() {
         Token t = peek();
         if (t.getType() == TokenType.NUMBER) return parseConst();

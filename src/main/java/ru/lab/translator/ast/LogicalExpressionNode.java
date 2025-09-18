@@ -12,7 +12,6 @@ public class LogicalExpressionNode extends ExpressionNode {
 
     @Override
     public String generateAssembly() {
-        // Логические бинарные операции AND/OR и сравнения
         if (op.equals("AND") || op.equals("OR")) {
             String asmOp = op.equals("AND") ? "and rax, rbx" : "or rax, rbx";
             return left.generateAssembly() +
@@ -20,7 +19,6 @@ public class LogicalExpressionNode extends ExpressionNode {
                     right.generateAssembly() +
                     "    " + asmOp + "\n";
         } else {
-            // Сравнения
             String setOp = switch (op) {
                 case "<" -> "setl al";
                 case ">" -> "setg al";
@@ -35,7 +33,7 @@ public class LogicalExpressionNode extends ExpressionNode {
                     right.generateAssembly() +
                     "    cmp rbx, rax\n" +
                     "    " + setOp + "\n" +
-                    "    movzx rax, al\n";  // расширяем al -> rax
+                    "    movzx rax, al\n";  // extend al -> rax
         }
     }
 

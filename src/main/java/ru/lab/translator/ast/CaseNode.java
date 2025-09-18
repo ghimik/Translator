@@ -62,7 +62,6 @@ public class CaseNode extends StatementNode {
         return sb.toString();
     }
 
-    // утилита для уникальных меток
     private static int caseCounter = 0;
     private static synchronized int uniqueId() { return caseCounter++; }
 
