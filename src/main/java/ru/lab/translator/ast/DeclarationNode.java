@@ -11,7 +11,7 @@ public class DeclarationNode extends ASTNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        return name + " dd 0\n"; // 64-bit переменная
     }
 
     @Override

@@ -5,10 +5,12 @@ public class ConstNode extends ExpressionNode {
     public ConstNode(int value) {
         this.value = value;
     }
+
     @Override
     public String generateAssembly() {
-        return "";
+        return "    mov eax, " + value + "\n"; // результат в eax
     }
+
     @Override
     public String toString() {
         return String.valueOf(value);

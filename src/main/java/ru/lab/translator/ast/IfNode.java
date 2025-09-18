@@ -13,8 +13,18 @@ public class IfNode extends StatementNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        String elseLabel = "ELSE_" + hashCode();
+        String endLabel = "ENDIF_" + hashCode();
+        return condition.generateAssembly() +
+                "    cmp eax, 0\n" +
+                "    je " + elseLabel + "\n" +
+                thenBranch.generateAssembly() +
+                "    jmp " + endLabel + "\n" +
+                elseLabel + ":\n" +
+                elseBranch.generateAssembly() +
+                endLabel + ":\n";
     }
+
     @Override
     public String toString() {
         return "if\n├─ condition:\n│  " + condition.toString().replaceAll("(?m)^", "│  ") +

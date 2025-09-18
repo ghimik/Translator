@@ -9,7 +9,10 @@ public class PrintNode extends StatementNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        return "    mov rsi, [" + var + "]\n" +
+                "    lea rdi, [rel fmt]\n" +
+                "    xor eax, eax\n" +
+                "    call printf\n";
     }
 
     @Override

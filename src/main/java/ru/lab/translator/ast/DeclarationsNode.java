@@ -12,7 +12,11 @@ public class DeclarationsNode extends ASTNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        StringBuilder sb = new StringBuilder();
+        for (DeclarationNode d : declarations) {
+            sb.append(d.generateAssembly());
+        }
+        return sb.toString();
     }
 
     @Override

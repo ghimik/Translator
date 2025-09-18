@@ -13,8 +13,13 @@ public class StatementsNode extends ASTNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        StringBuilder sb = new StringBuilder();
+        for (StatementNode s : statements) {
+            sb.append(s.generateAssembly());
+        }
+        return sb.toString();
     }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

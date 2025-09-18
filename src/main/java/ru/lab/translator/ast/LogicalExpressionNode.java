@@ -17,8 +17,17 @@ public class LogicalExpressionNode extends ExpressionNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        String asmOp = switch (op) {
+            case "AND" -> "and eax, ebx";
+            case "OR" -> "or eax, ebx";
+            default -> throw new RuntimeException("Unknown logical operator: " + op);
+        };
+        return left.generateAssembly() +
+                "    mov ebx, eax\n" +
+                right.generateAssembly() +
+                "    " + asmOp + "\n";
     }
+
     @Override
     public String toString() {
         return op + "\n├─ " + left.toString().replaceAll("(?m)^", "│  ") +

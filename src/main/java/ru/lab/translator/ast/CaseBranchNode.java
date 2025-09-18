@@ -11,7 +11,7 @@ public class CaseBranchNode extends ASTNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        return body.generateAssembly();
     }
 
     @Override

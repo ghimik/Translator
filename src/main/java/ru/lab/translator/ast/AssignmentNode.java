@@ -11,7 +11,7 @@ public class AssignmentNode extends StatementNode  {
 
     @Override
     public String generateAssembly() {
-        return "";
+        return expr.generateAssembly() + "    mov [" + var + "], eax\n";
     }
 
     @Override

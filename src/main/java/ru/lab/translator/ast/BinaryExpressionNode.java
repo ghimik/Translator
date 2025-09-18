@@ -12,7 +12,19 @@ public class BinaryExpressionNode extends ExpressionNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        String leftAsm = left.generateAssembly();
+        String rightAsm = right.generateAssembly();
+        String opAsm = switch (op) {
+            case "+" -> "add eax, ebx";
+            case "-" -> "sub eax, ebx";
+            case "*" -> "imul eax, ebx";
+            case "/" -> "xor edx, edx\n    div ebx";
+            default -> throw new RuntimeException("Unknown operator: " + op);
+        };
+        return leftAsm +
+                "    mov ebx, eax\n" +
+                rightAsm +
+                "    " + opAsm + "\n";
     }
 
     @Override

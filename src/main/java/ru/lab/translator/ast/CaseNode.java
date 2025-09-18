@@ -14,8 +14,54 @@ public class CaseNode extends StatementNode {
 
     @Override
     public String generateAssembly() {
-        return "";
+        if (branches.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder();
+        String endLabel = "ENDCASE_" + hashCode();
+        String tableLabel = "JUMP_TABLE_" + hashCode();
+        String defaultLabel = "CASE_DEFAULT_" + hashCode();
+
+        // находим min и max значения кейсов
+        int min = branches.stream().mapToInt(b -> b.value).min().getAsInt();
+        int max = branches.stream().mapToInt(b -> b.value).max().getAsInt();
+
+        // загружаем переменную и вычисляем индекс
+        sb.append("    mov eax, [").append(varName).append("]\n");
+        sb.append("    sub eax, ").append(min).append("\n");
+        sb.append("    cmp eax, ").append(max - min).append("\n");
+        sb.append("    ja ").append(defaultLabel).append("\n");
+        sb.append("    mov edx, [rel ").append(tableLabel).append(" + eax*8]\n");
+        sb.append("    jmp edx\n\n");
+
+        // генерируем тела кейсов
+        for (CaseBranchNode branch : branches) {
+            String branchLabel = "CASE_" + branch.hashCode();
+            sb.append(branchLabel).append(":\n");
+            sb.append(branch.body.generateAssembly());
+            sb.append("    jmp ").append(endLabel).append("\n\n");
+        }
+
+        // default (если нужен)
+        sb.append(defaultLabel).append(":\n");
+        sb.append("    ; default case (ничего не делаем)\n");
+        sb.append("    jmp ").append(endLabel).append("\n\n");
+
+        // jump table
+        sb.append(tableLabel).append(":\n");
+        for (int i = min; i <= max; i++) {
+            int finalI = i;
+            CaseBranchNode b = branches.stream().filter(br -> br.value == finalI).findFirst().orElse(null);
+            if (b != null) {
+                sb.append("    dd CASE_").append(b.hashCode()).append("\n");
+            } else {
+                sb.append("    dd ").append(defaultLabel).append("\n");
+            }
+        }
+
+        sb.append(endLabel).append(":\n");
+        return sb.toString();
     }
+
 
     @Override
     public String toString() {
