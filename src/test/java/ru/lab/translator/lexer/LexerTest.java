@@ -77,4 +77,65 @@ class LexerTest {
 
         assertEquals(TokenType.SEMICOLON, tokens.get(5).getType());
     }
+
+    @Test
+    void testNestedParenthesesAndOperators() {
+        String source = """
+            Integer result
+            Begin
+            result := (3 + (2 * (7 - 4))) / 5;
+            End
+            """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.tokenize();
+
+        assertEquals(TokenType.INTEGER, tokens.get(0).getType());
+        assertEquals("Integer", tokens.get(0).getValue());
+
+        assertEquals(TokenType.ID, tokens.get(1).getType());
+        assertEquals("result", tokens.get(1).getValue());
+
+        assertEquals(TokenType.LPAREN, tokens.get(5).getType());
+        assertEquals("(", tokens.get(5).getValue());
+
+        assertEquals(TokenType.NUMBER, tokens.get(6).getType());
+        assertEquals("3", tokens.get(6).getValue());
+
+        assertEquals(TokenType.PLUS, tokens.get(7).getType());
+        assertEquals("+", tokens.get(7).getValue());
+
+        Token eof = tokens.get(tokens.size() - 1);
+        assertEquals(TokenType.EOF, eof.getType());
+    }
+
+    @Test
+    void testKeywordsVsIdentifiers() {
+        String source = """
+            Integer BeginX
+            Boolean EndFlag
+            Begin
+            BeginX := 10;
+            EndFlag := false;
+            End
+            """;
+
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.tokenize();
+
+        assertEquals(TokenType.ID, tokens.get(1).getType());
+        assertEquals("BeginX", tokens.get(1).getValue());
+
+        assertEquals(TokenType.ID, tokens.get(3).getType());
+        assertEquals("EndFlag", tokens.get(3).getValue());
+
+        int falseIndex = tokens.stream()
+                .map(Token::getValue)
+                .toList()
+                .indexOf("false");
+
+        assertEquals(TokenType.FALSE, tokens.get(falseIndex).getType());
+        assertEquals("false", tokens.get(falseIndex).getValue());
+    }
+
 }

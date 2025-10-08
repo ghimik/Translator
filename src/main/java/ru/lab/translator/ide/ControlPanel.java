@@ -94,7 +94,7 @@ public class ControlPanel extends JPanel {
                 try {
                     String jsonPayload = "{\"asm\": " + jsonEscape(asmCode) + "}";
 
-                    URL url = new URL("http://localhost:8877/run_asm");
+                    URL url = new URL("http://localhost:32769/run_asm");
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("POST");
                     conn.setRequestProperty("Content-Type", "application/json");
