@@ -306,11 +306,17 @@ public class LL1Parser {
         ExpressionNode cond = parseLogicalExpression();
         expect(TokenType.THEN);
         StatementsNode thenBranch = parseStatementList();
-        expect(TokenType.ELSE);
-        StatementsNode elseBranch = parseStatementList();
+
+        StatementsNode elseBranch = new StatementsNode(new ArrayList<>());
+        if (peek().getType() == TokenType.ELSE) {
+            advance();
+            elseBranch = parseStatementList();
+        }
+
         expect(TokenType.ENDIF);
         return new IfNode(cond, thenBranch, elseBranch);
     }
+
 
     // <While> ::= WHILE <ЛогВыр> DO <СписокОператоров> ENDWHILE
     private WhileNode parseWhile() {

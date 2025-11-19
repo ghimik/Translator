@@ -12,12 +12,20 @@ public class LogicalExpressionNode extends ExpressionNode {
 
     @Override
     public String generateAssembly() {
-        if (op.equals("AND") || op.equals("OR")) {
-            String asmOp = op.equals("AND") ? "and rax, rbx" : "or rax, rbx";
-            return left.generateAssembly() +
-                    "    mov rbx, rax\n" +
-                    right.generateAssembly() +
-                    "    " + asmOp + "\n";
+        // логика: сохраняем left на стек, генерируем right, потом восстанавливаем left и делаем cmp / логическую операцию
+        if ("AND".equals(op) || "OR".equals(op)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(left.generateAssembly());
+            sb.append("    push rax\n");              // сохранить left
+            sb.append(right.generateAssembly());      // right -> rax
+            sb.append("    pop rbx\n");               // rbx = left
+            if ("AND".equals(op)) {
+                // хотим булевое AND: rax и rbx могут быть 0/1 или числа -> результат неплохо получить как (rax & rbx) != 0
+                sb.append("    and rax, rbx\n");     // rax = right & left
+            } else {
+                sb.append("    or rax, rbx\n");      // rax = right | left
+            }
+            return sb.toString();
         } else {
             String setOp = switch (op) {
                 case "<" -> "setl al";
@@ -28,14 +36,20 @@ public class LogicalExpressionNode extends ExpressionNode {
                 case "!=" -> "setne al";
                 default -> throw new RuntimeException("Unknown logical operator: " + op);
             };
-            return left.generateAssembly() +
-                    "    mov rbx, rax\n" +
-                    right.generateAssembly() +
-                    "    cmp rbx, rax\n" +
-                    "    " + setOp + "\n" +
-                    "    movzx rax, al\n";  // extend al -> rax
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(left.generateAssembly());     // left -> rax
+            sb.append("    push rax\n");            // сохранить left
+            sb.append(right.generateAssembly());    // right -> rax
+            sb.append("    pop rbx\n");             // rbx = left
+            // хотим cmp left, right
+            sb.append("    cmp rbx, rax\n");        // cmp left, right
+            sb.append("    ").append(setOp).append("\n");
+            sb.append("    movzx rax, al\n");      // result 0/1 in rax
+            return sb.toString();
         }
     }
+
 
     @Override
     public String toString() {
